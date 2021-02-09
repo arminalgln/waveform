@@ -5,7 +5,7 @@ files and csv files.
 
 You need to make `path to the main project/data/csv` folder for the time-series and `path to the main project/data/txt` for the additional event text info.
 
->They have each event data in pqd file which you can download all of them.
+>They have each event data in pqd file which you can download all of them as well.
 
 ###waveform auto encoder decoder
 
