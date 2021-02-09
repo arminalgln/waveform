@@ -2,6 +2,7 @@ import requests
 import pandas as pd
 from bs4 import BeautifulSoup
 import os
+import urllib.request
 #%%
 
 URL = 'https://pqmon.epri.com/see_all.html'
@@ -46,8 +47,19 @@ for idx, event in enumerate(event_meta['EventId']):
         data = pd.read_csv(base_url, skiprows=1)
         data.to_csv(path)
 #%%
+event_meta = pd.DataFrame(event_meta)
+files = os.listdir('data/txt')
 #get the text file wrt each event
-for idx, event
+for idx, event in event_meta.iterrows():
+    id = event['EventId'].split('\n')[1]
+    path = 'data/txt/{}.txt'.format(id)
+    if event['FeederId'].split('_')[0] == 'F':
+        name = event['SiteName'] + '_' + event['FeederId']
+        text_url = "https://pqmon.epri.com/doe_folder/circuits/{}.txt".format(name)
+        if not '{}.txt'.format(id) in files:
+            print(id)
+            urllib.request.urlretrieve(text_url, path)
+            print(path)
 
 
 
