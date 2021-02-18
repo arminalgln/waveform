@@ -35,6 +35,9 @@ for row in body.find_all('tr'):
     for idx, col in enumerate(row.find_all('td')):
         event_meta[keys[idx]].append(col.get_text())
 
+meta_data_events = pd.DataFrame(event_meta)
+
+meta_data_events.to_csv('data/meta_data.csv')
 #%%
 files = os.listdir('data/csv')
 #get the csv data for each event
