@@ -16,9 +16,23 @@ class Event():
         self.end = end
         self.path = "data/csv/{}.csv".format(id)
         self.data = pd.read_csv(self.path)[start:end]
-        self.data.rename(columns={'Unnamed: 0': 'id'})
-        self.keys = self.data.keys()
+        self.data.rename(columns={'Unnamed: 0': 'id'}, inplace=True)
+        self.keys = ['Time (s)', ' Va', ' Vb', ' Vc', ' Ia', ' Ib', ' Ic', ' In']
+        self.flag = 'normal'
+        if ' Vab' in self.data.keys():
+            self.flag = 'line'
+            self.data.rename(columns={' Vab': ' Va', ' Vbc': ' Vb', ' Vca': ' Vc'}, inplace=True)
+        if ' In' not in self.data.keys():
+            for k in self.keys[1:7]:
+                self.data[k] = pd.to_numeric(self.data[k], errors='coerce')
 
+            self.data[' In'] = -self.data[' Ia'] - self.data[' Ib'] - self.data[' Ic']
+        for k in [' Va', ' Vb', ' Vc']:
+            self.data[k] = self.data[k]/np.sqrt(3)
+        self.data = self.data[self.keys]
+        if self.flag == 'line':
+            valid_index = self.data[' Ia'].last_valid_index()
+            self.data = self.data[0:valid_index]
 
     def show_event(self, selected_keys):
         """
@@ -47,9 +61,9 @@ class Event():
         return yf, yf_mag_real, xf, start_index, N, T
 
     def show_detail(self):
-        current = self.keys[5:]
-        voltage = self.keys[2:5]
-        main_keys = self.keys[2:]
+        current = self.keys[4:]
+        voltage = self.keys[1:4]
+        main_keys = self.keys[1:]
         # fft analyze for each event
 
         fig, (ax0, ax1, ax2, ax3) = plt.subplots(nrows=4, constrained_layout=True)
