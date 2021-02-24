@@ -33,12 +33,18 @@ class Sampling(layers.Layer):
 """
 ## Build the encoder
 """
+features =pd.read_pickle('data/fft_features_abs_clean.pkl')
+x_train = abs(features.values)
+number_of_samples = x_train.shape[1]
+number_of_features = 7
+number_of_timesteps = 500
+x_train = x_train.transpose().reshape(number_of_samples,number_of_features,number_of_timesteps).transpose(0,2,1)
 
 latent_dim = 3
-in_dim = 500*7
-encoder_inputs = keras.Input(shape=in_dim)
-x = layers.Dense(64, activation="relu")(encoder_inputs)
-x = layers.Dense(64, activation="relu")(encoder_inputs)
+#in_dim = 500*7
+encoder_inputs = keras.Input(shape=(number_of_timesteps, number_of_features))
+x = layers.LSTM(1)(encoder_inputs)
+x = layers.Dense(64, activation="relu")(x)
 x = layers.Dense(32, activation="relu")(x)
 x = layers.Dense(16, activation="relu")(x)
 z_mean = layers.Dense(latent_dim, name="z_mean")(x)
@@ -56,7 +62,7 @@ latent_inputs = keras.Input(shape=(latent_dim,))
 x = layers.Dense(16, activation="relu")(latent_inputs)
 x = layers.Dense(32, activation="relu")(x)
 x = layers.Dense(64, activation="relu")(x)
-decoder_outputs = layers.Dense(in_dim, activation="relu")(x)
+decoder_outputs = layers.Dense(number_of_timesteps*number_of_features, activation="relu")(x)
 decoder = keras.Model(latent_inputs, decoder_outputs, name="decoder")
 decoder.summary()
 
@@ -90,6 +96,13 @@ class VAE(keras.Model):
             z_mean, z_var, z = self.encoder(data)
             reconstruction = self.decoder(z)
             mse = keras.losses.MeanSquaredError()
+            number_of_samples = tf.shape(data)[0]
+            print(number_of_samples)
+            number_of_features = 7
+            number_of_timesteps = 500
+            data = tf.transpose(data, perm=[0,2,1])
+            data = tf.reshape(data, [number_of_samples,number_of_features*number_of_timesteps])
+            data = tf.expand_dims(data, -1)
             reconstruction_loss = mse(data, reconstruction)
             kl_loss = -0.5 * (1 + tf.math.log(tf.square(z_var)) - tf.square(z_mean) - tf.square(z_var))
             kl_loss = tf.reduce_mean(tf.reduce_sum(kl_loss, axis=1))
@@ -110,97 +123,24 @@ class VAE(keras.Model):
 ## Train the VAE
 """
 
-features =pd.read_pickle('data/fft_features_abs_clean.pkl')
-x_train = abs(features.values).transpose()
+
 
 vae = VAE(encoder, decoder)
 vae.compile(optimizer=keras.optimizers.Adam())
 #%%
-epochs = 1000
-vae.fit(x_train, epochs = epochs, batch_size=20)
+vae.fit(x_train, epochs=10, batch_size=10)
 #%%
-meta_event = pd.read_csv('data/meta_data.csv')
-unique_causes = meta_event['Cause'].unique()
 causes = pd.read_pickle('data/causes.pkl')
-#%%
-iteration = iteration + epochs
-a, b, c = [0, 1, 2]
 
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 z_mean, _, _ = vae.encoder.predict(x_train)
-scatter = ax.scatter(z_mean[:, a], z_mean[:, b], z_mean[:, c],c=list(causes['label']), cmap="Spectral")
+scatter = ax.scatter(z_mean[:, 0], z_mean[:, 1], z_mean[:, 2],c=list(causes['label']), cmap="Spectral")
 legend1 = ax.legend(*scatter.legend_elements(),
                     loc="lower left", title="causes")
 ax.add_artist(legend1)
-ax.set_xlabel(['zmean_{}'.format(a)])
-ax.set_ylabel(['zmean_{}'.format(b)])
-ax.set_zlabel(['zmean_{}'.format(c)])
-ax.set_title('iteration = {}'.format(iteration))
 plt.show()
-#%%
-iteration = 0
 
-
-#%%
-
-a, b, c = [0, 1, 2]
-
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-z_mean, z_var, _ = vae.encoder.predict(x_train)
-scatter = ax.scatter(z_var[:, a], z_var[:, b], z_var[:, c],c=list(causes['label']), cmap="Spectral")
-legend1 = ax.legend(*scatter.legend_elements(),
-                    loc="lower left", title="causes")
-ax.add_artist(legend1)
-ax.set_xlabel(['zvar_{}'.format(a)])
-ax.set_ylabel(['zvar_{}'.format(b)])
-ax.set_zlabel(['zvar_{}'.format(c)])
-ax.set_title('iteration = {}'.format(iteration))
-plt.show()
-#%%
-"""
-## Display a grid of sampled digits
-"""
-
-import matplotlib.pyplot as plt
-
-
-def plot_latent_space(vae, n=30, figsize=15):
-    # display a n*n 2D manifold of digits
-    digit_size = 28
-    scale = 1.0
-    figure = np.zeros((digit_size * n, digit_size * n))
-    # linearly spaced coordinates corresponding to the 2D plot
-    # of digit classes in the latent space
-    grid_x = np.linspace(-scale, scale, n)
-    grid_y = np.linspace(-scale, scale, n)[::-1]
-
-    for i, yi in enumerate(grid_y):
-        for j, xi in enumerate(grid_x):
-            z_sample = np.array([[xi, yi]])
-            x_decoded = vae.decoder.predict(z_sample)
-            digit = x_decoded[0].reshape(digit_size, digit_size)
-            figure[
-                i * digit_size : (i + 1) * digit_size,
-                j * digit_size : (j + 1) * digit_size,
-            ] = digit
-
-    plt.figure(figsize=(figsize, figsize))
-    start_range = digit_size // 2
-    end_range = n * digit_size + start_range
-    pixel_range = np.arange(start_range, end_range, digit_size)
-    sample_range_x = np.round(grid_x, 1)
-    sample_range_y = np.round(grid_y, 1)
-    plt.xticks(pixel_range, sample_range_x)
-    plt.yticks(pixel_range, sample_range_y)
-    plt.xlabel("z[0]")
-    plt.ylabel("z[1]")
-    plt.imshow(figure, cmap="Greys_r")
-    plt.show()
-
-
-plot_latent_space(vae)
 #%%
 """
 ## Display how the latent space clusters different digit classes

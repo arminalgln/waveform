@@ -16,7 +16,7 @@ meta_event = pd.read_csv('data/meta_data.csv')
 plt.ion()
 whole_events = [i.split('.')[0] for i in os.listdir('data/csv')]
 #just testing some data
-id = whole_events[50]
+id = whole_events[0]
 start= 0
 end = -1
 e = Event(id, start, end)
@@ -27,8 +27,8 @@ print(meta_event.loc[meta_event['EventId']==int(id)].values)
 #%%
 #get the fft for each event as the input features
 whole_events = [i.split('.')[0] for i in os.listdir('data/csv')]
-
-Nf = 500 * 7 # number of features
+number_of_freqs = 200
+Nf = number_of_freqs * 7 # number of features
 features = {}
 max_voltage = 0
 max_current = 0
@@ -50,9 +50,10 @@ for i, ev in enumerate(whole_events):
         event_feature = np.array([])
         # for voltages and current append the fft features
         for idx, k in enumerate(keys[1:]):
-            temp_feature = np.zeros(500, dtype=complex)
+            temp_feature = np.zeros(number_of_freqs, dtype=complex)
             yf, yf_mag_real, xf, start_index, N, T = e.fft_analyzer(k)
-            temp_feature[0:min(np.shape(yf)[0], 500)] = abs(yf[0:min(np.shape(yf)[0], 500)])
+            #temp_feature[0:min(np.shape(yf)[0], 500)] = abs(yf[0:min(np.shape(yf)[0], 500)])
+            temp_feature[0:min(np.shape(yf_mag_real)[0], number_of_freqs)] = yf_mag_real[0:min(np.shape(yf)[0], number_of_freqs)]
             event_feature = np.append(event_feature, temp_feature)
 
             #catch the max magnitude for currrent and voltage to normalize the features
@@ -66,8 +67,8 @@ for i, ev in enumerate(whole_events):
         features[ev] = event_feature
 
 for ev in features:
-    features[ev][0:3*500] = features[ev][0:3*500]/max_voltage
-    features[ev][3 * 500:] = features[ev][3 * 500:] / max_current
+    features[ev][0:3*number_of_freqs] = features[ev][0:3*number_of_freqs]/max_voltage
+    features[ev][3 * number_of_freqs:] = features[ev][3 * number_of_freqs] / max_current
 #%%
 
 causes.to_pickle('data/causes.pkl')
@@ -75,5 +76,5 @@ causes.to_pickle('data/causes.pkl')
 #%%
 #save fft feature
 features = pd.DataFrame(features)
-features.to_pickle('data/fft_features_abs_clean.pkl')
+features.to_pickle('data/fft_features_abs_clean_100.pkl')
 #%%
