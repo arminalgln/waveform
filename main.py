@@ -36,6 +36,7 @@ bad_data_index= [122, 123, 124, 125, 127, 128]
 unique_causes = meta_event['Cause'].unique()
 bad_events_id = []
 causes = pd.DataFrame(columns={'id','cause','label'})
+#%%
 for i, ev in enumerate(whole_events):
 
     print(i, ev)
@@ -77,4 +78,38 @@ causes.to_pickle('data/causes.pkl')
 #save fft feature
 features = pd.DataFrame(features)
 features.to_pickle('data/fft_features_abs_clean_100.pkl')
+
 #%%
+max_size = 0
+#kshape clustering test
+from kshape.core import kshape, zscore
+test_events = whole_events[0:50]
+I_ns = []
+for ev in test_events:
+    temp_In = list(Event(ev, start, end).data[' In'].values)
+    if max_size < len(temp_In):
+        max_size = len(temp_In)
+for ev in test_events:
+    temp_In = list(Event(ev, start, end).data[' In'].values)
+    zero_pad = [0] * max_size
+    zero_pad[0:len(temp_In)] = temp_In
+    I_ns.append(zero_pad)
+
+#%%
+causes = pd.read_pickle('data/causes.pkl')
+def cluster_show(cluster_rep, cluster_id):
+    #plt.plot(cluster_rep)
+    for i in cluster_id:
+        ev = causes.iloc[i]['id']
+        temp_In = list(Event(ev, start, end).data[' In'].values)
+        plt.plot(temp_In)
+    plt.legend(list(causes.iloc[cluster_id]['cause']))
+    plt.show()
+
+cluster_num = 6
+clusters = kshape(zscore(I_ns, axis=1), cluster_num)
+for i in range(cluster_num):
+    print(causes.iloc[clusters[i][1]],'\n','----------------------')
+    cluster_show(clusters[i][0], clusters[i][1])
+
+

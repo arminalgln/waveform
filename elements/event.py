@@ -34,6 +34,9 @@ class Event():
             valid_index = self.data[' Ia'].last_valid_index()
             self.data = self.data[0:valid_index]
 
+    def res(self):
+        
+
     def show_event(self, selected_keys):
         """
         :param selected_keys: selected feature/s by user to show
