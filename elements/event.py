@@ -4,17 +4,18 @@ import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
 from scipy.fft import fft, fftfreq
+import math
 
 
 class Event():
-    def __init__(self, id, start, end):
+    def __init__(self, id, start, end, type):
         """
         :param id: is an string which shows the event id and file
         """
         self.id = id
         self.start = start
         self.end = end
-        self.path = "data/csv/{}.csv".format(id)
+        self.path = "data/" + type +"/{}.csv".format(id)
         self.data = pd.read_csv(self.path)[start:end]
         self.data.rename(columns={'Unnamed: 0': 'id'}, inplace=True)
         self.keys = ['Time (s)', ' Va', ' Vb', ' Vc', ' Ia', ' Ib', ' Ic', ' In']
@@ -35,7 +36,19 @@ class Event():
             self.data = self.data[0:valid_index]
 
     def res(self):
-        
+        n = 1 #number of shifted cycles
+        sampling_rate = self.data['Time (s)'][1] - self.data['Time (s)'][0]
+        cycle = 1/60 #60Hz
+        sample_per_period = math.floor(cycle/sampling_rate)
+        shift = n * sample_per_period
+        shifted_data = self.data.shift(periods=-shift, fill_value=0)#shift the whole dataset
+        shifted_data = shifted_data.iloc[0:-shift] #remove the shifted zeros
+        residue = self.data.iloc[0:-shift] - shifted_data
+        return residue
+
+
+
+
 
     def show_event(self, selected_keys):
         """

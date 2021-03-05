@@ -13,17 +13,18 @@ from scipy.fft import fft, fftfreq, ifft
 #meta data
 meta_event = pd.read_csv('data/meta_data.csv')
 #List of events
-plt.ion()
 whole_events = [i.split('.')[0] for i in os.listdir('data/csv')]
 #just testing some data
-id = whole_events[0]
+id = whole_events[2]
 start= 0
 end = -1
 e = Event(id, start, end)
 keys = ['Time (s)', ' Va', ' Vb', ' Vc', ' Ia', ' Ib', ' Ic', ' In']
 yf, yf_mag_real, xf, start_index, N, T = e.fft_analyzer(keys[6])
-fig = e.show_detail()
-print(meta_event.loc[meta_event['EventId']==int(id)].values)
+#fig = e.show_detail()
+#print(meta_event.loc[meta_event['EventId']==int(id)].values)
+e.data.plot()
+e.res().plot()
 #%%
 #get the fft for each event as the input features
 whole_events = [i.split('.')[0] for i in os.listdir('data/csv')]
@@ -36,6 +37,7 @@ bad_data_index= [122, 123, 124, 125, 127, 128]
 unique_causes = meta_event['Cause'].unique()
 bad_events_id = []
 causes = pd.DataFrame(columns={'id','cause','label'})
+
 #%%
 for i, ev in enumerate(whole_events):
 
@@ -113,3 +115,29 @@ for i in range(cluster_num):
     cluster_show(clusters[i][0], clusters[i][1])
 
 
+#%%
+import statsmodels.api as sm
+
+dta = sm.datasets.co2.load_pandas().data
+# deal with missing values. see issue
+dta.co2.interpolate(inplace=True)
+
+id = whole_events[100]
+start= 0
+end = -1
+e = Event(id, start, end)
+res = sm.tsa.seasonal_decompose(e.data[' Ib'])
+resplot = res.plot()
+#%%
+id = whole_events[2]
+
+start= 0
+end = -1
+e = Event(id, start, end, 'downsampled')
+from scipy.signal import hilbert
+analytic_signal = hilbert(get_noisy(e.data[' Ib']))
+amplitude_envelope = np.abs(analytic_signal)
+
+plt.plot(get_noisy(e.data[' Ib']))
+plt.plot(amplitude_envelope)
+plt.show()
