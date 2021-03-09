@@ -9,8 +9,12 @@ import numpy as np
 import math
 import scipy
 from scipy import interpolate
-#%%
+import matplotlib
+import matplotlib.pyplot as plt
+from scipy.interpolate import InterpolatedUnivariateSpline
 
+#%%
+#parsing the resource files
 URL = 'https://pqmon.epri.com/see_all.html'
 page = requests.get(URL)
 
@@ -72,7 +76,8 @@ for idx, event in event_meta.iterrows():
             urllib.request.urlretrieve(text_url, path)
             print(path)
 #%%
-#interpolate to get the highest sampling rate
+#interpolate to get the highest sampling rate then
+#save all the data with the same sampling rate
 whole_events = [i.split('.')[0] for i in os.listdir('data/csv')]
 cycle = 1/60
 max_sampling_rate = 256 #per cycle
@@ -99,41 +104,95 @@ for ev in whole_events:
 
 
 #%%
-e=Event('0001',0,-1, 'resampled')
 #generate noise based on the maximum change in the time series
+
 def get_noisy(ts):
     temp = np.roll(ts,-1)
     residue = np.abs(ts[0:-1]-temp[0:-1])
     eps = max(residue)
+    #np.random.seed(0)
     noise = np.random.normal(0, eps/2, ts.shape[0])
     ts_noisy = ts + noise
     return ts_noisy
+## e = Event('0001',0,-1, 'resampled')
 
-ts = e.data[' In']
-tn = get_noisy(ts)
-
-plt.plot(ts)
-plt.plot(tn)
-plt.show()
+# ts = e.data[' In']
+# tn = get_noisy(ts)
+#
+# plt.plot(ts)
+# plt.plot(tn)
+# plt.show()
 #%%
+#data augmentation
 
+def augmentation(ev, shift, noise_number, order):
+
+    e = Event(ev, 0, -1, 'resampled')
+    sample_horizon = e.data['Time (s)']
+    indexes = np.array(list(e.data.index))
+    ns = indexes.shape[0]
+    cause = causes.loc[causes['id']==ev]
+    augmented_causes = pd.DataFrame(columns=['label', 'id', 'cause'])
+    for i, shift in enumerate(np.arange(-shift, shift + 1)):
+        for n in range(noise_number):
+            aug_event = {'Time (s)': sample_horizon}
+            for f in e.data.keys()[1:]:
+                shifted_temp_data = np.roll(e.data[f], shift)[max(0, shift): max(ns, ns - shift)]
+                intpo = InterpolatedUnivariateSpline(
+                    indexes[max(0, shift): max(ns, ns - shift)], shifted_temp_data, k=order
+                )
+                new_data = intpo(indexes)
+                aug_event[f] = get_noisy(new_data)
+            aug_event = pd.DataFrame(aug_event)
+            new_id = cause['id'].values[0] + '_' + str(i) + '_' + str(n)
+            augmented_causes = augmented_causes.append({'label': cause['label'].values[0], 'id': new_id, 'cause':cause['cause'].values[0]}, ignore_index=True)
+            saving_path = 'data/augmented_data/{}.pkl'.format(new_id)
+            aug_event.to_pickle(saving_path)
+            print('I saved {}'.format(new_id))
+
+    return augmented_causes
+
+
+#%%
 #roll the time series
 causes = pd.read_pickle('data/causes.pkl')
 noise_number = 10
-max_shift = 10
-#data augmentation
-def augmentation(ev):
-    e = Event(ev, 0, -1, 'resampled')
-    aug_data = e.data.copy()
-    data = 
-    for f in [' Va', ' Vb']:
-
-
-
-
-
-
+shift = 10
+order = 2
 whole_events = [i.split('.')[0] for i in os.listdir('data/csv')]
+bad_data_index= [122, 123, 124, 125, 127, 128]
+bad_data_event = [whole_events[i] for i in bad_data_index]
+whole_events = np.setdiff1d(whole_events, bad_data_event)
+for i, ev in enumerate(whole_events):
+    agc = augmentation(ev, shift, noise_number, order)
+    if i==0:
+        whole_agc =agc
+    whole_agc = whole_agc.append(agc, ignore_index=True)
+whole_agc.to_pickle('data/whole_agc.pkl')
+#%%
+#show events , rolled and noisy vs real
+# I saved 0001_0_0
+# I saved 0001_1_0
+# I saved 0001_2_0
+e = Event('4556',0,-1, 'resampled')
+d = pd.read_pickle('data/augmented_data/4556_20_8.pkl')
+plt.plot(d[' Ib'])
+plt.plot(e.data[' Ib'])
+plt.show()
+#%%
+#extracting just known and real dataset for evaluation
+meta_event = pd.read_csv('data/meta_data.csv')
+causes = pd.read_pickle('data/causes.pkl').groupby('cause')
 
-for ev_id in whole_events:
+unique_causes = meta_event['Cause'].unique()
 
+known_clusters_cause = ['Tree', 'Equipment','Weather', 'Vehicle', 'Planned',
+                        'Animal', 'Lightning', 'Customer Request', 'Customer Caused']
+paper_based_known = ['Tree', 'Equipment', 'Vehicle','Animal', 'Lightning']
+
+clusters = {}
+for cl in paper_based_known:
+    clusters[cl] = causes.get_group(cl)['id'].reset_index(drop=True)
+
+clusters = pd.DataFrame(clusters)
+clusters.to_pickle('data/known_true_clusters_ids.pkl')

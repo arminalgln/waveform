@@ -64,3 +64,59 @@ for c in all_causes:
         plt.show()
         save_path = path + '/{}.png'.format(ev)
         fig.savefig(save_path)
+#%%
+#known event true figures
+def show_event(ev, cl):
+    causes = pd.read_pickle('data/causes.pkl')
+    e = Event(ev, 0, -1, 'resampled')
+    path = 'figures/eval_clusters/{}/{}.png'.format(cl, ev)
+    selected_data = e.data.loc[:, e.data.columns != 'Time (s)']
+    f, (ax1, ax2) = plt.subplots(2, 1)
+    for i in selected_data.keys()[0:3]:
+        ax1.plot(selected_data[i], label=i)
+    for i in selected_data.keys()[3:]:
+        ax2.plot(selected_data[i], label=i)
+
+        ax1.set_title(ev)
+    # plt.legend()
+    f.savefig(path)
+    plt.show()
+
+
+    #%%
+# read the main dataset
+true_clusters_known = pd.read_pickle('data/known_true_clusters_ids.pkl')
+all_clusters_data = []
+cl = 'Tree'
+for cl in true_clusters_known.keys():
+    os.mkdir('figures/eval_clusters/{}'.format(cl))
+    for ev in true_clusters_known[cl].dropna():
+        show_event(ev, cl)
+
+
+#%%
+#known event true figures
+def show_event(ev, cl):
+    causes = pd.read_pickle('data/causes.pkl')
+    e = Event(ev, 0, -1, 'resampled')
+    path = 'figures/eval_res/{}/{}.png'.format(cl, ev)
+    selected_data = e.res().loc[:, e.res().columns != 'Time (s)']
+    f, (ax1, ax2) = plt.subplots(2, 1)
+    for i in selected_data.keys()[0:3]:
+        ax1.plot(selected_data[i], label=i)
+    for i in selected_data.keys()[3:]:
+        ax2.plot(selected_data[i], label=i)
+
+        ax1.set_title(ev)
+    # plt.legend()
+    f.savefig(path)
+    plt.show()
+    #%%
+# read the main dataset with res
+true_clusters_known = pd.read_pickle('data/known_true_clusters_ids.pkl')
+all_clusters_data = []
+cl = 'Tree'
+for cl in true_clusters_known.keys():
+    os.mkdir('figures/eval_res/{}'.format(cl))
+    for ev in true_clusters_known[cl].dropna():
+        show_event(ev, cl)
