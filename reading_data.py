@@ -98,7 +98,7 @@ for ev in whole_events:
         downsampled_data = intpo(sample_horizon)
         new_event_data[f] = downsampled_data
     new_event_data = pd.DataFrame(new_event_data)
-    new_event_data.to_csv('data/downsampled/{}.csv'.format(ev))
+    new_event_data.to_csv('data/resampled/{}.csv'.format(ev))
     print(math.ceil((sample_horizon[1] - sample_horizon[0])/(t.iloc[1] - t.iloc[0])))
 
 
@@ -196,3 +196,51 @@ for cl in paper_based_known:
 
 clusters = pd.DataFrame(clusters)
 clusters.to_pickle('data/known_true_clusters_ids.pkl')
+#%%
+#chnage the long and bad data to more acceptable event length with event signature
+bad_events_horizon = {
+    '2771':[0,500],
+     '21838':[2500,3000],
+     '21839':[3000,3500],
+     '21844':[600,900],
+     '21845':[1350,1800],
+     '21846':[0,500],
+     '21847':[1400,1900],
+     '21848':[1600,2100],
+     '21851':[3100,3400],
+     '21852':[1100,1600],
+     '21853':[0,500],
+     '21854':[1000,1400],
+     '21835':[2500,3000],
+     '21836':[1400,1600],
+     '21837':[800,1200],
+     '21841':[100,600],
+     '21850':[2000,2500],
+     '21862':[800,1200],
+     '21863':[500,1000],
+     '21865':[3500,4000],
+     '21873':[2300,2500],
+     '21856':[900,1200],
+     '21857':[1400,1900],
+     '21858':[0,500],
+     '21859':[800,1300],
+     '21860':[2200,2700],
+     '21861':[2300,2800],
+     '21872':[1600,2000],
+     '21831':[2800,3100],
+     '21832':[2800,3100],
+     '21833':[1300,1700],
+     '21834':[1600,2100],
+     '21840':[3600,3900],
+     '21842':[1150,1650],
+     '21843':[100,500]
+             }
+
+for ev in list(bad_events_horizon.keys()):
+    e = Event(ev, 0, -1, 'resampled')
+    data = e.data.iloc[bad_events_horizon[ev][0]:bad_events_horizon[ev][1]]
+    data.to_csv('data/resampled/{}.csv'.format(ev))
+    # plt.plot(data[' Ib'])
+    # plt.plot(data[' Ic'])
+    # plt.plot(data[' Ia'])
+    # plt.show()
